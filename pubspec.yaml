@@ -1,9 +1,11 @@
 name: aegislock
-description: "Projet Cyber Sentinel - Authentification Proximité"
+description: "Système d'authentification par proximité et biométrie."
 publish_to: 'none'
 
+version: 1.0.0+1
+
 environment:
-  sdk: '>=3.1.0 <4.0.0'
+  sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -11,4 +13,11 @@ dependencies:
   local_auth: ^2.1.6
   flutter_blue_plus: ^1.31.0
   cupertino_icons: ^1.0.6
-  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
