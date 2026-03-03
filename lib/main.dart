@@ -30,20 +30,24 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   final LocalAuthentication auth = LocalAuthentication();
   
-  // VARIABLES DE CONTROLE
   bool _isAuthenticated = false;
-  bool _isScanning = false;
   double _rssiLimit = -60.0;
-  String _status = "Attente Biométrie";
-  String _debugLog = "Prêt.";
+  String _status = "Vérification Identité...";
+  String _debugLog = "Initialisation système...";
   
-  // FILTRE DE SIGNAL
   List<int> _rssiHistory = [];
-  final String _targetMac = "60:FF:9E:4A:C7:59";
+  final String _targetMac = "60:FF:9E:4A:C7:59"; 
 
   StreamSubscription<List<ScanResult>>? _scanSubscription;
 
-  // NETTOYAGE DE LA MÉMOIRE (Unique)
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) _checkBiometrics();
+    });
+  }
+
   @override
   void dispose() {
     _scanSubscription?.cancel();
@@ -51,18 +55,16 @@ class _DashboardState extends State<Dashboard> {
     super.dispose();
   }
 
-  // 1. AUTHENTIFICATION
   Future<void> _checkBiometrics() async {
     try {
       bool authenticated = await auth.authenticate(
-        localizedReason: 'Accès au PC sécurisé',
+        localizedReason: 'Accès sécurisé à AegisLock',
         options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
       );
-
       if (authenticated) {
         setState(() {
           _isAuthenticated = true;
-          _status = "Authentifié - Scan en cours...";
+          _status = "SCAN BLE ACTIF";
         });
         _startSecureScan();
       }
@@ -71,16 +73,10 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
-  // 2. SCAN & FILTRAGE
   void _startSecureScan() async {
     await FlutterBluePlus.stopScan();
     await _scanSubscription?.cancel();
-
-    setState(() {
-      _isScanning = true;
-      _debugLog = "Recherche de : $_targetMac";
-    });
-
+    setState(() => _debugLog = "Cible : $_targetMac");
     FlutterBluePlus.startScan(timeout: null);
 
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
@@ -93,45 +89,52 @@ class _DashboardState extends State<Dashboard> {
   }
 
   void _handleSignal(int currentRssi) {
+    if (!mounted) return;
     setState(() {
       _rssiHistory.add(currentRssi);
       if (_rssiHistory.length > 10) _rssiHistory.removeAt(0);
-
       double average = _rssiHistory.reduce((a, b) => a + b) / _rssiHistory.length;
-
-      _debugLog = "Signal Brut: $currentRssi dBm | Moyenne: ${average.toStringAsFixed(1)}";
+      _debugLog = "RSSI: $currentRssi | Moy: ${average.toStringAsFixed(1)} dBm";
 
       if (average > _rssiLimit) {
-        _status = "À PORTÉE (PC Déverrouillé)";
+        _status = "PORTÉE OK (PC DÉVERROUILLÉ)";
       } else {
-        _status = "HORS PORTÉE (Verrouillage...)";
+        _status = "HORS PORTÉE (VERROUILLAGE...)";
       }
     });
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkBiometrics();
-      });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final double screenW = MediaQuery.of(context).size.width;
+    final double screenH = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("CYBER-SENTINEL"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text("AEGIS-LOCK", style: TextStyle(letterSpacing: 3, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Column(
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: screenH * 0.15),
+
+          // --- GROUPE HAUT : STATUT + BOUTON ---
+          Text(_status, style: TextStyle(fontSize: screenW * 0.045, color: Colors.white70)),
+          
+          SizedBox(height: screenH * 0.02),
+
           Center(
             child: GestureDetector(
               onTap: _checkBiometrics,
               child: Container(
-                padding: const EdgeInsets.all(40),
+                width: screenW * 0.45, 
+                height: screenW * 0.45,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _isAuthenticated ? Colors.green.withOpacity(0.1) : Colors.cyan.withOpacity(0.1),
+                  color: _isAuthenticated ? Colors.green.withOpacity(0.05) : Colors.cyan.withOpacity(0.05),
                   border: Border.all(
                     color: _isAuthenticated ? Colors.greenAccent : Colors.cyanAccent, 
                     width: 2
@@ -139,42 +142,56 @@ class _DashboardState extends State<Dashboard> {
                 ),
                 child: Icon(
                   _isAuthenticated ? Icons.security : Icons.fingerprint, 
-                  size: 80, 
+                  size: screenW * 0.18, 
                   color: Colors.white
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          Text(_status, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+          // --- LE RESSORT ---
+          // Il pousse tout ce qui suit vers le bas de l'écran
           const Spacer(),
+
+          // --- GROUPE BAS : DEBUG + SEUIL ---
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.symmetric(horizontal: screenW * 0.06, vertical: screenH * 0.01),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10)
+            ),
+            child: Text(
+              _debugLog,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, fontSize: 11),
+            ),
+          ),
+
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: screenW * 0.08),
             child: Column(
               children: [
-                Text("Seuil de déverrouillage: ${_rssiLimit.toInt()} dBm"),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("SEUIL DE SÉCURITÉ", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                    Text("${_rssiLimit.toInt()} dBm", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                  ],
+                ),
                 Slider(
                   value: _rssiLimit,
                   min: -100, max: -20,
+                  activeColor: Colors.cyanAccent,
                   onChanged: (val) => setState(() => _rssiLimit = val),
                 ),
               ],
             ),
           ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(15),
-            margin: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white10)
-            ),
-            child: Text(
-              _debugLog,
-              style: const TextStyle(fontFamily: 'monospace', color: Colors.greenAccent),
-            ),
-          ),
+          
+          SizedBox(height: screenH * 0.2), // Espace de sécurité en bas
         ],
       ),
     );
