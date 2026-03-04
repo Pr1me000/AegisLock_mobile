@@ -29,15 +29,14 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   final LocalAuthentication auth = LocalAuthentication();
-  
   bool _isAuthenticated = false;
   double _rssiLimit = -60.0;
   String _status = "Vérification Identité...";
   String _debugLog = "Initialisation système...";
+  int _selectedIndex = 0; 
   
   List<int> _rssiHistory = [];
   final String _targetMac = "60:FF:9E:4A:C7:59"; 
-
   StreamSubscription<List<ScanResult>>? _scanSubscription;
 
   @override
@@ -118,13 +117,10 @@ class _DashboardState extends State<Dashboard> {
       ),
       body: Column(
         children: [
-          SizedBox(height: screenH * 0.15),
+          const Spacer(flex: 2), 
 
-          // --- GROUPE HAUT : STATUT + BOUTON ---
-          Text(_status, style: TextStyle(fontSize: screenW * 0.045, color: Colors.white70)),
-          
+          Text(_status, style: TextStyle(fontSize: screenW * 0.04, color: Colors.white70)),
           SizedBox(height: screenH * 0.02),
-
           Center(
             child: GestureDetector(
               onTap: _checkBiometrics,
@@ -149,15 +145,12 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
 
-          // --- LE RESSORT ---
-          // Il pousse tout ce qui suit vers le bas de l'écran
-          const Spacer(),
+          const SizedBox(height: 60),
 
-          // --- GROUPE BAS : DEBUG + SEUIL ---
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            margin: EdgeInsets.symmetric(horizontal: screenW * 0.06, vertical: screenH * 0.01),
+            padding: const EdgeInsets.all(10),
+            margin: EdgeInsets.symmetric(horizontal: screenW * 0.06, vertical: 5),
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(12),
@@ -166,7 +159,7 @@ class _DashboardState extends State<Dashboard> {
             child: Text(
               _debugLog,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, fontSize: 11),
+              style: const TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, fontSize: 10),
             ),
           ),
 
@@ -177,8 +170,8 @@ class _DashboardState extends State<Dashboard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("SEUIL DE SÉCURITÉ", style: TextStyle(color: Colors.white38, fontSize: 10)),
-                    Text("${_rssiLimit.toInt()} dBm", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                    const Text("SEUIL", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                    Text("${_rssiLimit.toInt()} dBm", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 10)),
                   ],
                 ),
                 Slider(
@@ -191,8 +184,42 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
           
-          SizedBox(height: screenH * 0.2), // Espace de sécurité en bas
+          const Spacer(flex: 1), 
         ],
+      ),
+
+      bottomNavigationBar: Container(
+        height: 60,
+        margin: const EdgeInsets.fromLTRB(25, 0, 25, 60), 
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C2128),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _navItem(Icons.shield, 0),
+            _navItem(Icons.devices, 1),
+            _navItem(Icons.settings, 2),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(IconData icon, int index) {
+    bool isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedIndex = index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        color: Colors.transparent,
+        child: Icon(
+          icon,
+          color: isSelected ? Colors.cyanAccent : Colors.white24,
+          size: 24,
+        ),
       ),
     );
   }
