@@ -23,7 +23,9 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 1), () { if (mounted) _checkBiometrics(); });
+    Future.delayed(const Duration(seconds: 1), () { 
+      if (mounted) _checkBiometrics(); 
+    });
   }
 
   @override
@@ -37,7 +39,6 @@ class _DashboardState extends State<Dashboard> {
     try {
       bool authenticated = await auth.authenticate(
         localizedReason: 'Accès sécurisé à AegisLock',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
       );
       if (authenticated) {
         setState(() {
@@ -97,10 +98,11 @@ class _DashboardState extends State<Dashboard> {
       ),
       body: Column(
         children: [
-          const Spacer(flex: 5),
+          const Spacer(flex: 7), 
 
           Text(_status, style: TextStyle(fontSize: screenW * 0.04, color: Colors.white70)),
           SizedBox(height: screenH * 0.02),
+          
           Center(
             child: GestureDetector(
               onTap: _checkBiometrics,
@@ -111,14 +113,21 @@ class _DashboardState extends State<Dashboard> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _isAuthenticated ? Colors.green.withOpacity(0.05) : Colors.cyan.withOpacity(0.05),
-                  border: Border.all(color: _isAuthenticated ? Colors.greenAccent : Colors.cyanAccent, width: 2),
+                  border: Border.all(
+                    color: _isAuthenticated ? Colors.greenAccent : Colors.cyanAccent, 
+                    width: 2
+                  ),
                 ),
-                child: Icon(_isAuthenticated ? Icons.security : Icons.fingerprint, size: screenW * 0.18, color: Colors.white),
+                child: Icon(
+                  _isAuthenticated ? Icons.security : Icons.fingerprint, 
+                  size: screenW * 0.18, 
+                  color: Colors.white
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 80),
+          const SizedBox(height: 60),
 
           Container(
             width: double.infinity,
@@ -149,7 +158,7 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
           
-          const Spacer(flex: 3),
+          const Spacer(flex: 3), 
         ],
       ),
     );

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard.dart';
+import 'screens/devices.dart';
 
-void main() => runApp(const CyberSentinelApp());
+void main() {
+  // Indispensable pour éviter les crashs d'Isolate au démarrage sur S24
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const CyberSentinelApp());
+}
 
 class CyberSentinelApp extends StatelessWidget {
   const CyberSentinelApp({super.key});
@@ -30,7 +35,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _pages = [
     const Dashboard(),
-    const Center(child: Text("DEVICES PAGE", style: TextStyle(color: Colors.cyanAccent))),
+    const Devices(),
     const Center(child: Text("SETTINGS PAGE", style: TextStyle(color: Colors.cyanAccent))),
   ];
 
@@ -43,7 +48,7 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       bottomNavigationBar: Container(
         height: 60,
-        margin: const EdgeInsets.fromLTRB(25, 0, 25, 70),
+        margin: const EdgeInsets.fromLTRB(25, 0, 25, 60),
         decoration: BoxDecoration(
           color: const Color(0xFF1C2128),
           borderRadius: BorderRadius.circular(30),
@@ -53,7 +58,7 @@ class _MainNavigationState extends State<MainNavigation> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _navItem(Icons.shield, 0),
-            _navItem(Icons.devices, 1),
+            _navItem(Icons.radar, 1),
             _navItem(Icons.settings, 2),
           ],
         ),
