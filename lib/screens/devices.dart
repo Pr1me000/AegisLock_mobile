@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
+import 'pairing.dart';
+
+const String AEGIS_SERVICE_UUID = "bf27730d-860a-4e09-889c-2d8b6a9e0fe7";
 
 class Devices extends StatefulWidget {
   const Devices({super.key});
@@ -9,26 +12,21 @@ class Devices extends StatefulWidget {
 }
 
 class _DevicesState extends State<Devices> {
-  List<ScanResult> _scanResults = [];
-  bool _isScanning = false;
+  final FlutterBlePeripheral peripheral = FlutterBlePeripheral();
+  bool _isBroadcasting = false;
 
-  void _startDiscovery() async {
-    setState(() {
-      _isScanning = true;
-      _scanResults = [];
-    });
+  void _toggleSonar() async {
+    if (_isBroadcasting) {
+      await peripheral.stop();
+      setState(() => _isBroadcasting = false);
+    } else {
+      final AdvertiseData advertiseData = AdvertiseData(
+        serviceUuid: AEGIS_SERVICE_UUID,
+        localName: "AegisPhone-PRIME", 
+      );
 
-    try {
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      
-      FlutterBluePlus.scanResults.listen((results) {
-        if (mounted) setState(() => _scanResults = results);
-      });
-
-      await Future.delayed(const Duration(seconds: 4));
-      if (mounted) setState(() => _isScanning = false);
-    } catch (e) {
-      if (mounted) setState(() => _isScanning = false);
+      await peripheral.start(advertiseData: advertiseData);
+      setState(() => _isBroadcasting = true);
     }
   }
 
@@ -36,37 +34,29 @@ class _DevicesState extends State<Devices> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text("SECURE DISCOVERY", style: TextStyle(letterSpacing: 2, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 10),
-          Text(_isScanning ? "RECHERCHE..." : "RADAR PRÊT", style: const TextStyle(color: Colors.white24, fontSize: 10)),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _scanResults.length,
-              itemBuilder: (context, index) {
-                final res = _scanResults[index];
-                return ListTile(
-                  title: Text(res.device.platformName.isEmpty ? "Inconnu" : res.device.platformName),
-                  subtitle: Text(res.device.remoteId.toString()),
-                  trailing: const Text("LINK", style: TextStyle(color: Colors.cyanAccent)),
-                );
-              },
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.radar, size: 100, color: _isBroadcasting ? Colors.cyanAccent : Colors.white10),
+            const SizedBox(height: 50),
+            ElevatedButton(
+              onPressed: _toggleSonar,
+              child: Text(_isBroadcasting ? "STOP SONAR" : "START SONAR"),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 30),
-            child: ElevatedButton(
-              onPressed: _isScanning ? null : _startDiscovery,
-              child: Text(_isScanning ? "SCANNING..." : "START SCAN"),
-            ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            if (_isBroadcasting)
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => Pairing(deviceId: "Aegis-Desktop")),
+                  );
+                },
+                child: const Text("SCAN QR CODE"),
+              ),
+          ],
+        ),
       ),
     );
   }

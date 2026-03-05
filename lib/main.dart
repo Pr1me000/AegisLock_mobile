@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard.dart';
 import 'screens/devices.dart';
+import 'screens/settings.dart'; // Nouveau fichier
 
 void main() {
-  // Indispensable pour éviter les crashs d'Isolate au démarrage sur S24
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const CyberSentinelApp());
 }
@@ -35,8 +35,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _pages = [
     const Dashboard(),
-    const Devices(),
-    const Center(child: Text("SETTINGS PAGE", style: TextStyle(color: Colors.cyanAccent))),
+    const Devices(), // Assure-toi que la classe s'appelle bien Devices dans devices.dart
+    const SettingsPage(),
   ];
 
   @override
