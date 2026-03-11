@@ -1,82 +1,95 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard.dart';
 import 'screens/devices.dart';
-import 'screens/settings.dart'; // Nouveau fichier
+import 'screens/settings.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const CyberSentinelApp());
+  runApp(const AegisApp());
 }
 
-class CyberSentinelApp extends StatelessWidget {
-  const CyberSentinelApp({super.key});
+class AegisApp extends StatelessWidget {
+  const AegisApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0D1117),
+        scaffoldBackgroundColor: const Color(0xFF0F1115),
       ),
-      home: const MainNavigation(),
+      home: const MainNavigator(),
     );
   }
 }
 
-class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+class MainNavigator extends StatefulWidget {
+  const MainNavigator({super.key});
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  State<MainNavigator> createState() => _MainNavigatorState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+class _MainNavigatorState extends State<MainNavigator> {
+  int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    const Dashboard(),
-    const Devices(), // Assure-toi que la classe s'appelle bien Devices dans devices.dart
+    const DashboardPage(),
+    const DevicesPage(),
     const SettingsPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: Container(
-        height: 60,
-        margin: const EdgeInsets.fromLTRB(25, 0, 25, 60),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1C2128),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _navItem(Icons.shield, 0),
-            _navItem(Icons.radar, 1),
-            _navItem(Icons.settings, 2),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        color: Colors.transparent,
-        child: Icon(
-          icon,
-          color: isSelected ? Colors.cyanAccent : Colors.white24,
-          size: 24,
+      extendBody: true,
+      body: _pages[_currentIndex],
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+          child: Container(
+            height: 65,
+            decoration: BoxDecoration(
+              color: const Color(0xFF161920),
+              borderRadius: BorderRadius.circular(35),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.shield,
+                    size: 28,
+                    color: _currentIndex == 0 ? const Color(0xFF64FFDA) : Colors.white38
+                  ),
+                  onPressed: () => setState(() => _currentIndex = 0),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.track_changes,
+                    size: 28,
+                    color: _currentIndex == 1 ? const Color(0xFF64FFDA) : Colors.white38
+                  ),
+                  onPressed: () => setState(() => _currentIndex = 1),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.settings,
+                    size: 28,
+                    color: _currentIndex == 2 ? const Color(0xFF64FFDA) : Colors.white38
+                  ),
+                  onPressed: () => setState(() => _currentIndex = 2),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

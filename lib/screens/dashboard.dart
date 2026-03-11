@@ -1,165 +1,178 @@
-import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+const String AEGIS_SERVICE_UUID = "bf27730d-860a-4e09-889c-2d8b6a9e0fe7";
+
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({super.key});
 
   @override
-  State<Dashboard> createState() => _DashboardState();
+  State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardPageState extends State<DashboardPage> {
+  bool _isLocking = false;
+  double _seuil = -60.0;
+  final FlutterBlePeripheral peripheral = FlutterBlePeripheral();
   final LocalAuthentication auth = LocalAuthentication();
-  bool _isAuthenticated = false;
-  double _rssiLimit = -60.0;
-  String _status = "Vérification Identité...";
-  String _debugLog = "Initialisation système...";
-  List<int> _rssiHistory = [];
-  final String _targetMac = "60:FF:9E:4A:C7:59"; 
-  StreamSubscription<List<ScanResult>>? _scanSubscription;
 
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 1), () { 
-      if (mounted) _checkBiometrics(); 
-    });
-  }
+  Future<void> _forceLockPC() async {
+    if (_isLocking) return;
 
-  @override
-  void dispose() {
-    _scanSubscription?.cancel();
-    FlutterBluePlus.stopScan();
-    super.dispose();
-  }
-
-  Future<void> _checkBiometrics() async {
+    bool authenticated = false;
     try {
-      bool authenticated = await auth.authenticate(
-        localizedReason: 'Accès sécurisé à AegisLock',
+      authenticated = await auth.authenticate(
+        localizedReason: 'Autorisez le verrouillage manuel du PC',
       );
-      if (authenticated) {
-        setState(() {
-          _isAuthenticated = true;
-          _status = "SCAN BLE ACTIF";
-        });
-        _startSecureScan();
-      }
     } catch (e) {
-      setState(() => _debugLog = "Erreur Bio: $e");
+      authenticated = true; 
     }
-  }
 
-  void _startSecureScan() async {
-    await FlutterBluePlus.stopScan();
-    await _scanSubscription?.cancel();
-    setState(() => _debugLog = "Cible : $_targetMac");
-    FlutterBluePlus.startScan(timeout: null);
+    if (!authenticated) return;
+    
+    setState(() => _isLocking = true);
+    await peripheral.stop();
 
-    _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
-      for (ScanResult r in results) {
-        if (r.device.remoteId.toString().toUpperCase() == _targetMac) {
-          _handleSignal(r.rssi);
-        }
-      }
-    });
-  }
+    final AdvertiseData lockData = AdvertiseData(
+      serviceUuid: AEGIS_SERVICE_UUID,
+      localName: "Aegis-S24",
+      manufacturerId: 0xFFFF,
+      manufacturerData: Uint8List.fromList("LOCK".codeUnits),
+    );
 
-  void _handleSignal(int currentRssi) {
-    if (!mounted) return;
-    setState(() {
-      _rssiHistory.add(currentRssi);
-      if (_rssiHistory.length > 10) _rssiHistory.removeAt(0);
-      double average = _rssiHistory.reduce((a, b) => a + b) / _rssiHistory.length;
-      _debugLog = "RSSI: $currentRssi | Moy: ${average.toStringAsFixed(1)} dBm";
+    final AdvertiseSettings settings = AdvertiseSettings(
+      advertiseMode: AdvertiseMode.advertiseModeLowLatency,
+      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
+      connectable: false,
+    );
 
-      if (average > _rssiLimit) {
-        _status = "PORTÉE OK (PC DÉVERROUILLÉ)";
-      } else {
-        _status = "HORS PORTÉE (VERROUILLAGE...)";
-      }
-    });
+    await peripheral.start(advertiseData: lockData, advertiseSettings: settings);
+    
+    await Future.delayed(const Duration(seconds: 3));
+    await peripheral.stop();
+    
+    if (mounted) setState(() => _isLocking = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final double screenW = MediaQuery.of(context).size.width;
-    final double screenH = MediaQuery.of(context).size.height;
+    final Color mainColor = const Color(0xFF64FFDA);
+    final String statusText = _isLocking ? "VERROUILLAGE EN COURS..." : "SCAN BLE ACTIF";
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text("AEGIS-LOCK", style: TextStyle(letterSpacing: 3, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        title: const Text("AEGIS-LOCK", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 3, fontSize: 20)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
       ),
-      body: Column(
-        children: [
-          const Spacer(flex: 7), 
-
-          Text(_status, style: TextStyle(fontSize: screenW * 0.04, color: Colors.white70)),
-          SizedBox(height: screenH * 0.02),
-          
-          Center(
-            child: GestureDetector(
-              onTap: _checkBiometrics,
-              child: Container(
-                width: screenW * 0.45, 
-                height: screenW * 0.45,
-                alignment: Alignment.center,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              statusText,
+              style: const TextStyle(color: Colors.white70, fontSize: 16, letterSpacing: 1),
+            ),
+            const SizedBox(height: 40),
+            
+            GestureDetector(
+              onTap: _isLocking ? null : _forceLockPC,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 200,
+                height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _isAuthenticated ? Colors.green.withOpacity(0.05) : Colors.cyan.withOpacity(0.05),
+                  color: Colors.transparent,
                   border: Border.all(
-                    color: _isAuthenticated ? Colors.greenAccent : Colors.cyanAccent, 
-                    width: 2
+                    color: mainColor,
+                    width: 2,
                   ),
+                  boxShadow: _isLocking ? [
+                    BoxShadow(
+                      color: mainColor.withOpacity(0.6), 
+                      blurRadius: 40, 
+                      spreadRadius: 10
+                    )
+                  ] : [],
                 ),
-                child: Icon(
-                  _isAuthenticated ? Icons.security : Icons.fingerprint, 
-                  size: screenW * 0.18, 
-                  color: Colors.white
+                child: const Center(
+                  child: Icon(
+                    Icons.security, 
+                    size: 80,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
-          ),
+            
+            const SizedBox(height: 30), 
 
-          const SizedBox(height: 60),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            margin: EdgeInsets.symmetric(horizontal: screenW * 0.06, vertical: 5),
-            decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
-            child: Text(_debugLog, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, fontSize: 10)),
-          ),
-
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenW * 0.08),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("SEUIL", style: TextStyle(color: Colors.white38, fontSize: 10)),
-                    Text("${_rssiLimit.toInt()} dBm", style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 10)),
-                  ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF000000), 
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                Slider(
-                  value: _rssiLimit,
-                  min: -100, max: -20,
-                  activeColor: Colors.cyanAccent,
-                  onChanged: (val) => setState(() => _rssiLimit = val),
+                child: Center(
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        const TextSpan(text: "Cible : ", style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'monospace')),
+                        TextSpan(text: "60:FF:9E:4A:C7:59", style: TextStyle(color: mainColor, fontSize: 14, fontFamily: 'monospace')),
+                      ],
+                    ),
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
-          
-          const Spacer(flex: 3), 
-        ],
+
+            const SizedBox(height: 25), 
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("SEUIL", style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 1)),
+                      Text("${_seuil.toInt()} dBm", style: TextStyle(color: mainColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: mainColor,
+                      inactiveTrackColor: const Color(0xFF2C2F33),
+                      thumbColor: mainColor,
+                      trackHeight: 4.0,
+                    ),
+                    child: Slider(
+                      value: _seuil,
+                      min: -100.0,
+                      max: -40.0,
+                      onChanged: (value) {
+                        setState(() {
+                          _seuil = value;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 95), 
+          ],
+        ),
       ),
     );
   }

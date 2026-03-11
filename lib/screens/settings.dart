@@ -1,33 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Liste fictive d'appareils déjà liés (à lier à une DB plus tard)
-    final List<Map<String, String>> pairedDevices = [
-      {"name": "PC-GAMER-ARCH", "mac": "60:FF:9E:4A:C7:59"},
-    ];
+  State<SettingsPage> createState() => _SettingsPageState();
+}
 
+class _SettingsPageState extends State<SettingsPage> {
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDisplayName();
+  }
+
+  Future<void> _loadDisplayName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _nameController.text = prefs.getString('display_name') ?? "AegisPhone-PRIME";
+    });
+  }
+
+  Future<void> _saveDisplayName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('display_name', name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text("APPAREILS APPAIRÉS"), backgroundColor: Colors.transparent),
-      body: ListView.builder(
-        itemCount: pairedDevices.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: const Icon(Icons.laptop, color: Colors.cyanAccent),
-            title: Text(pairedDevices[index]['name']!),
-            subtitle: Text(pairedDevices[index]['mac']!, style: const TextStyle(color: Colors.white24)),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-              onPressed: () {
-                // Logique pour supprimer la clé privée
-              },
+      appBar: AppBar(title: const Text("CONFIGURATION"), backgroundColor: Colors.transparent),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _nameController,
+              onSubmitted: _saveDisplayName,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white10,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.save),
+                  onPressed: () => _saveDisplayName(_nameController.text),
+                ),
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
